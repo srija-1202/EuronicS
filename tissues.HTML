@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Bootstrap Example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    .table thead th {
+        background: #337ab7;
+        color: white;
+        text-align: center;
+    }
+    .table tbody td {
+        text-align: center;
+    }
+    .pagination {
+        display: flex; 
+        justify-content: center;
+    }
+    .search-bar {
+        display: flex;
+        align-items: center;
+        margin-left: auto; 
+    }
+    .search-bar input {
+        width: 200px;
+        margin-left: 5px;
+    }
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between; 
+        margin-top: 10px;
+    }
+    .buttons {
+        margin-top: 10px; 
+    }
+    .content {
+        margin-top: 20px; 
+    }
+    .mt-20 {
+        margin-top: 20px; 
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <ul class="nav nav-tabs">
+    <li class="active"><a data-toggle="tab" href="#menu1">Live</a></li>
+    <li><a data-toggle="tab" href="#menu2">Empty</a></li>
+  </ul>
+
+  <div class="tab-content">
+    <div id="menu1" class="tab-pane fade in active">
+      <div class="header">
+        <h2 class="mb-4">Tissue Details</h2>
+        <div class="search-bar">
+          <span class="glyphicon glyphicon-search" aria-hidden="true"></span>
+          <input type="text" class="form-control" placeholder="Search" id="myInput" onkeyup="searchTable('userdb', 'myInput')">
+        </div>
+      </div>
+      <div class="buttons">
+        <button class="btn btn-primary" data-toggle="modal" data-target="#analyticsModal">Analytics</button>
+        <button class="btn btn-secondary" id="export-button">Export</button>
+      </div>
+      <div class="content">
+        <table id="userdb" class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Device Name</th>
+              <th>Location</th>
+              <th>Last Fill Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Data will be inserted here -->
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation example">
+          <ul class="pagination" id="pagination-controls">
+            <!-- Pagination buttons will be generated dynamically here -->
+          </ul>
+        </nav>
+      </div>
+    </div>
+    <div id="menu2" class="tab-pane fade">
+      <div class="header">
+        <h2 class="mb-4">Tissue Emptyness Updates</h2>
+        <div class="search-bar">
+          <span class="glyphicon glyphicon-search" aria-hidden="true"></span>
+          <input type="text" class="form-control" placeholder="Search" id="myInputTissues" onkeyup="searchTable('tissues-table', 'myInputTissues')">
+        </div>
+      </div>
+      <div class="buttons">
+        <button class="btn btn-primary" data-toggle="modal" data-target="#analyticsModal">Analytics</button>
+        <button class="btn btn-secondary" id="export-tissues-button">Export</button>
+      </div>
+      <div class="content mt-20">
+        <table id="tissues-table" class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Device Id</th>
+              <th>Location</th>
+              <th>Last Empty Time</th>
+              <th>Last Fill Time</th>
+            </tr>
+          </thead>
+          <tbody id="tableBodyTissues">
+            <!-- Data will be inserted here -->
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation example">
+          <ul class="pagination" id="pagination-controls-tissues">
+            <!-- Pagination buttons will be generated dynamically here -->
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics Modal -->
+<div id="analyticsModal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Device Analytics</h4>
+      </div>
+      <div class="modal-body">
+        <canvas id="myPieChart" width="400" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JSON data -->
+<script id="json-data" type="application/json">
+[
+    {
+        "Device Name": "Device1", "Location": "L1", "Last Fill Time": "2024-08-05 12:00", "Last Empty Time": "2024-08-04 10:00", "Status": "Active", "Empty": "No"
+    },
+    {
+        "Device Name": "Device2", "Location": "L2", "Last Fill Time": "2024-08-04 09:30", "Last Empty Time": "2024-08-03 08:30", "Status": "Inactive", "Empty": "Yes"
+    },
+    {
+        "Device Name": "Device3", "Location": "L3", "Last Fill Time": "2024-08-03 15:45", "Last Empty Time": "2024-08-02 14:45", "Status": "Active", "Empty": "No"
+    }
+]
+</script>
+
+<script>
+$(document).ready(function() {
+    const { jsPDF } = window.jspdf;
+    var jsonData = JSON.parse(document.getElementById('json-data').textContent);
+    var rowsPerPage = 3;
+    var currentPage = 1;
+    var pagesToShow = 5;
+
+    function populateTable(tableBody, data, columns) {
+        tableBody.empty();
+        data.forEach(function(item) {
+            var row = '<tr>';
+            columns.forEach(function(column) {
+                row += '<td>' + item[column] + '</td>';
+            });
+            row += '</tr>';
+            tableBody.append(row);
+        });
+    }
+
+    function displayTableRows(tableBody, paginationContainer, data) {
+        var tableRows = tableBody.find('tr');
+        var totalPages = Math.ceil(tableRows.length / rowsPerPage);
+
+        // Update the pagination based on the total number of pages
+        paginationContainer.empty(); // Clear existing items
+
+        // Add Previous button
+        var previousButton = $('<li class="page-item"><a class="page-link" href="#">Previous</a></li>');
+        if (currentPage === 1) {
+            previousButton.addClass('disabled');
+        }
+        previousButton.click(function(e) {
+            e.preventDefault();
+            if (currentPage > 1) {
+                currentPage--;
+                displayTableRows(tableBody, paginationContainer, data);
+            }
+        });
+        paginationContainer.append(previousButton);
+
+        // Calculate the start and end page numbers to display
+        var startPage = Math.max(1, currentPage - Math.floor(pagesToShow / 2));
+        var endPage = Math.min(startPage + pagesToShow - 1, totalPages);
+
+        // Add page items dynamically
+        for (var i = startPage; i <= endPage; i++) {
+            var pageItem = $('<li class="page-item"><a class="page-link" href="#">' + i + '</a></li>');
+            if (i === currentPage) {
+                pageItem.addClass('active');
+            }
+            pageItem.click(function(e) {
+                e.preventDefault();
+                currentPage = parseInt($(this).text());
+                displayTableRows(tableBody, paginationContainer, data);
+            });
+            paginationContainer.append(pageItem);
+        }
+
+        // Add Next button
+        var nextButton = $('<li class="page-item"><a class="page-link" href="#">Next</a></li>');
+        if (currentPage === totalPages) {
+            nextButton.addClass('disabled');
+        }
+        nextButton.click(function(e) {
+            e.preventDefault();
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayTableRows(tableBody, paginationContainer, data);
+            }
+        });
+        paginationContainer.append(nextButton);
+
+        // Show/hide table rows based on current page
+        var startIndex = (currentPage - 1) * rowsPerPage;
+        var endIndex = startIndex + rowsPerPage;
+        tableRows.hide();
+        tableRows.slice(startIndex, endIndex).show();
+    }
+
+    var handwashTableBody = $('#userdb tbody');
+    var tissuesTableBody = $('#tissues-table tbody');
+    var paginationControlsHandwash = $('#pagination-controls');
+    var paginationControlsTissues = $('#pagination-controls-tissues');
+
+    populateTable(handwashTableBody, jsonData, ["Device Name", "Location", "Last Fill Time", "Status"]);
+    displayTableRows(handwashTableBody, paginationControlsHandwash, jsonData);
+
+    populateTable(tissuesTableBody, jsonData, ["Device Name", "Location", "Last Empty Time", "Last Fill Time"]);
+    displayTableRows(tissuesTableBody, paginationControlsTissues, jsonData);
+
+    function filterTable(tableBody, paginationContainer, filterValue, data, columns) {
+        var filteredData = data.filter(function(item) {
+            return columns.some(function(column) {
+                return item[column].toLowerCase().includes(filterValue);
+            });
+        });
+        currentPage = 1;
+        populateTable(tableBody, filteredData, columns);
+        displayTableRows(tableBody, paginationContainer, filteredData);
+    }
+
+    $("#myInput").on("keyup", function() {
+        var value = $(this).val().toLowerCase();
+        filterTable(handwashTableBody, paginationControlsHandwash, value, jsonData, ["Device Name", "Location", "Last Fill Time", "Status"]);
+    });
+
+    $("#myInputTissues").on("keyup", function() {
+        var value = $(this).val().toLowerCase();
+        filterTable(tissuesTableBody, paginationControlsTissues, value, jsonData, ["Device Name", "Location", "Last Empty Time", "Last Fill Time"]);
+    });
+
+    $('#analyticsModal').on('shown.bs.modal', function () {
+        var ctx = document.getElementById('myPieChart').getContext('2d');
+        var myPieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: jsonData.map(item => item["Device Name"]),
+                datasets: [{
+                    label: 'Device Data',
+                    data: jsonData.map(() => Math.floor(Math.random() * 100)), 
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+            }
+        });
+    });
+
+    function exportTableToPDF(tableId, filename) {
+        var doc = new jsPDF();
+        doc.autoTable({ html: '#' + tableId });
+        doc.save(filename);
+    }
+
+    $('#export-button').click(function() {
+        exportTableToPDF('userdb', 'HandWashData.pdf');
+    });
+
+    $('#export-tissues-button').click(function() {
+        exportTableToPDF('tissues-table', 'TissuesData.pdf');
+    });
+});
+</script>
+</body>
+</html>
