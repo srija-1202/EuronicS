@@ -1,0 +1,11 @@
+[
+    {
+        "Device Name": "Device1", "Location": "L1","Empty": "Empty1"
+    },
+    {
+        "Device Name": " Device2", "Location": "L2", "Empty": "Empty2"
+    },
+    {
+        "Device Name": " Device3", "Location": "L3", "Empty": "Empty3"
+    }
+]
